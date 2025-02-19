@@ -1,7 +1,9 @@
-import sqlite3InitModule, {OpfsSAHPoolDatabase} from "@sqlite.org/sqlite-wasm";
+import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 
-let db: OpfsSAHPoolDatabase | null = null;
-let initPromise : any = null;
+let db: any | null = null;
+let initPromise: any = null;
+
+const subscriptions = new Map<string, { sql: string; params: any[]; tables: string[] }>(); // 记录订阅信息
 
 async function initDB() {
   const sqlite3 = await sqlite3InitModule();
@@ -15,9 +17,9 @@ async function initDB() {
     clearOnInit: false,
     directory: "/sqlite3",
   });
-  console.log({poolUtil});
+  console.log({ poolUtil });
 
-  db = new poolUtil.OpfsSAHPoolDb(`/test.db`);
+  db = new poolUtil.OpfsSAHPoolDb(`/test2.db`);
 
   console.log(
     "opfs" in sqlite3
@@ -28,46 +30,21 @@ async function initDB() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users
     (
-      id
-      INTEGER
-      PRIMARY
-      KEY
-      AUTOINCREMENT,
-      name
-      TEXT
-      NOT
-      NULL,
-      age
-      INTEGER
-      NOT
-      NULL
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      age INTEGER NOT NULL
     );
   `);
 
-  db.exec(`CREATE TABLE IF NOT EXISTS orders
-  (
-    id
-    INTEGER
-    PRIMARY
-    KEY
-    AUTOINCREMENT,
-    user_id
-    INTEGER
-    NOT
-    NULL,
-    amount
-    REAL
-    NOT
-    NULL,
-    FOREIGN
-    KEY
-           (
-    user_id
-           ) REFERENCES users
-           (
-             id
-           )
-    );`)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orders
+    (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+  `);
 
   return "Database initialized with OPFS.";
 }
@@ -79,8 +56,30 @@ async function ensureInit() {
   return initPromise;
 }
 
+function notifySubscribers(affectedTables: string[]) {
+  if (!db) {
+    console.warn("Database is not initialized. Skipping notifySubscribers.");
+    return;
+  }
+
+  for (const [id, { sql, params, tables }] of subscriptions) {
+    if (tables.some((table) => affectedTables.includes(table))) {
+      const results: any[] = [];
+      db.exec({
+        sql,
+        bind: params,
+        callback: (row: Record<string, any>) => {
+          results.push(row);
+        },
+      });
+      self.postMessage({ id, type: "subscribe", result: results });
+    }
+  }
+}
+
+
 self.onmessage = async (event) => {
-  const {id, type, payload} = event.data;
+  const { id, type, payload } = event.data;
 
   try {
     if (type === "init") {
@@ -88,8 +87,8 @@ self.onmessage = async (event) => {
         initPromise = initDB();
       }
       const result = await initPromise;
-      self.postMessage({id, type: "init", result});
-    }else if (type === "close") {
+      self.postMessage({ id, type: "init", result });
+    } else if (type === "close") {
       if (db) {
         db.close();
         db = null;
@@ -111,21 +110,60 @@ self.onmessage = async (event) => {
       }
 
       if (type === "execute") {
-        const {sql, params} = payload;
-        db.exec({sql, bind: params});
-        self.postMessage({id, type: "execute", result: "Success"});
+        const { sql, params } = payload;
+
+        db.exec({ sql, bind: params });
+        self.postMessage({ id, type: "execute", result: "Success" });
+
+        const affectedTables = getAffectedTables(sql);
+        if (affectedTables.length > 0) {
+          notifySubscribers(affectedTables);
+        }
       } else if (type === "query") {
-        const {sql, params} = payload;
-        const results: any = [];
+        const { sql, params } = payload;
+
+        const results: any[] = [];
         db.exec({
           sql,
           bind: params,
           callback: (row: any) => results.push(row),
         });
-        self.postMessage({id, type: "query", result: results});
+
+        self.postMessage({ id, type: "query", result: results });
+
+      } else if (type === "subscribe") {
+        const { sql, params, tables } = payload;
+
+        const results: any[] = [];
+        db.exec({
+          sql,
+          bind: params,
+          callback: (row: any) => results.push(row),
+        });
+
+        self.postMessage({ id, type: "subscribe", result: results });
+
+        subscriptions.set(id, { sql, params, tables });
+      } else if (type === "unsubscribe") {
+        subscriptions.delete(id);
+        self.postMessage({ id, type: "unsubscribe", result: "Unsubscribed successfully." });
       }
     }
   } catch (error: any) {
-    self.postMessage({id, type: "error", error: error.message});
+    self.postMessage({ id, type: "error", error: error.message });
   }
 };
+
+function getAffectedTables(sql: string): string[] {
+  const tables: string[] = [];
+
+  const insertMatch = sql.match(/INSERT\s+INTO\s+(\w+)/i);
+  const updateMatch = sql.match(/UPDATE\s+(\w+)/i);
+  const deleteMatch = sql.match(/DELETE\s+FROM\s+(\w+)/i);
+
+  if (insertMatch) tables.push(insertMatch[1]);
+  if (updateMatch) tables.push(updateMatch[1]);
+  if (deleteMatch) tables.push(deleteMatch[1]);
+
+  return tables;
+}
