@@ -29,7 +29,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import SQLiteService from "src/database/SQLiteService";
+import SQLiteService from "src/database/SQLiteServiceV3";
 
 const users = ref<any[]>([]);
 const orders = ref<any[]>([]);

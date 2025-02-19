@@ -33,7 +33,7 @@ import {onMounted, ref} from "vue";
 const users = ref<any[]>([]);
 const orders = ref<any[]>([]);
 const userOrders = ref<any[]>([]);
-const worker = new Worker(new URL("src/database/SQLiteServiceV3.ts",import.meta.url));
+const worker = new Worker(new URL("src/database/SQLiteServiceV2.ts",import.meta.url));
 
 worker.onmessage = (event : any) => {
   const {type, result, error} = event.data;
