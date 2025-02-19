@@ -18,7 +18,10 @@ class SQLiteServiceV3 {
   }
 
   async init() {
-    const sqlite3 = await sqlite3InitModule();
+    const sqlite3 = await sqlite3InitModule({
+      print: console.log,
+      printErr: console.error});
+
     const opfsVfs = sqlite3.capi.sqlite3_vfs_find("opfs");
     if (opfsVfs) {
       console.log("OPFS VFS is available!");

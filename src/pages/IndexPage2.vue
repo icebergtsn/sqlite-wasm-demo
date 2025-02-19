@@ -29,78 +29,86 @@
 
 <script setup lang="ts">
 import {onMounted, ref} from "vue";
+import {sendMessageToWorker} from "src/database/SQLiteServiceV2";
 
 const users = ref<any[]>([]);
 const orders = ref<any[]>([]);
 const userOrders = ref<any[]>([]);
-const worker = new Worker(new URL("src/database/SQLiteServiceV2.ts",import.meta.url));
-
-worker.onmessage = (event : any) => {
-  const {type, result, error} = event.data;
-  if (type === "init") {
-    console.log(result);
-  } else if (type === "execute") {
-    console.log(result);
-  } else if (type === "query") {
-    console.log(result);
-  } else if (type === "error") {
-    console.error(error);
-  }
-}
 
 onMounted(() => {
-  worker.postMessage({
-    type: "init"
+  sendMessageToWorker("init").then(() => {
+    fetchUsers2()
+    fetchOrder2()
+    fetchUserOrders2()
   })
 })
 
 const addUser2 = () => {
-  worker.postMessage({
-    type: "execute",
-    payload: {
-      sql: "INSERT INTO users (name, age) VALUES (?, ?)",
-      params: ["test", "66"],
-    },
+  const name = `User ${Math.floor(Math.random() * 100)}`;
+  const age = Math.floor(Math.random() * 50) + 20;
+  sendMessageToWorker("execute", {
+    sql: `
+      INSERT INTO users (name, age)
+      VALUES (?, ?);
+    `,
+    params: [name, age],
   });
+  fetchUsers2()
+  fetchUserOrders2()
 }
 
 const addOrder2 = () => {
-  worker.postMessage({
-    type: "query",
-    payload: {
-      sql: "SELECT * FROM users",
-      params: [],
-    },
-  });
+  const userId = Math.floor(Math.random() * 3) + 1;
+  const amount = (Math.random() * 100).toFixed(2);
+  sendMessageToWorker('execute', {
+    sql : `
+    INSERT INTO orders (user_id, amount)
+    VALUES (?, ?);
+  `, params : [userId, amount]
+  })
+  fetchOrder2()
+  fetchUserOrders2()
 };
 
 const fetchUsers2 = async () => {
-  worker.postMessage({
-    type: "query",
-    payload: {
-      sql: "SELECT * FROM users",
-      params: [],
-    },
-  });
+  sendMessageToWorker('query',{
+    sql: "SELECT * FROM users",
+    params: [],
+  }).then((res : any)=>{
+    console.log(res)
+    users.value = res.map((row: any) => ({
+      id: row[0],
+      name: row[1],
+      age: row[2],
+    }));
+  })
 };
 
 const fetchOrder2 = async () => {
-  worker.postMessage({
-    type: "query",
-    payload: {
-      sql: "SELECT * FROM orders",
-      params: [],
-    },
-  });
+  sendMessageToWorker('query',{
+    sql: "SELECT * FROM orders",
+    params: [],
+  }).then((res : any)=>{
+    console.log(res)
+    orders.value = res.map((row: any) => ({
+      id: row[0],
+      user_id: row[1],
+      amount: row[2],
+    }));
+  })
 };
 
 const fetchUserOrders2 = async () => {
-  worker.postMessage({
-    type: "query",
-    payload: {
-      sql: "SELECT users.id AS user_id, users.name, users.age, orders.amount\n    FROM users\n    JOIN orders ON users.id = orders.user_id",
-      params: [],
-    },
-  });
+  sendMessageToWorker('query',{
+    sql: "SELECT users.id AS user_id, users.name, users.age, orders.amount\n    FROM users\n    JOIN orders ON users.id = orders.user_id",
+    params: [],
+  }).then((res : any)=>{
+    userOrders.value = res.map((row: any) => ({
+      user_id: row[0],
+      name: row[1],
+      age: row[2],
+      amount: row[3],
+    }));
+  })
 };
 </script>
