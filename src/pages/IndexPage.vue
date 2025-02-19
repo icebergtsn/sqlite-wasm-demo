@@ -29,7 +29,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import SQLiteService from "src/database/SQLiteServiceV2";
+import SQLiteService from "src/database/SQLiteService";
 
 const users = ref<any[]>([]);
 const orders = ref<any[]>([]);
@@ -45,7 +45,6 @@ const addUser = () => {
   fetchUsers();
 };
 
-// 添加订单
 const addOrder = () => {
   const userId = Math.floor(Math.random() * 3) + 1;
   const amount = (Math.random() * 100).toFixed(2);
@@ -66,7 +65,6 @@ const fetchUsers = async () => {
   }));
 };
 
-// 查询 orders 表
 const fetchOrders = async () => {
   const result = await SQLiteService.query("SELECT * FROM orders");
   orders.value = result.map((row: any) => ({
