@@ -12,14 +12,15 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
+    "@sqlite.org/sqlite-wasm": "^3.46.1-build5",
     "core-js": "^3.31.1",
     "quasar": "^2.16.0",
     "vue": "^3.4.18",
     "vue-router": "^4.0.12"
   },
   "devDependencies": {
-    "@types/node": "^20.14.8",
-    "@quasar/app-webpack": "^3.13.0"
+    "@quasar/app-webpack": "^3.13.0",
+    "@types/node": "^20.14.8"
   },
   "overridesComments": {
     "typescript-1": "npm and pnpm hoist newer version of TypeScript, which is incompatible with app-webpack v3 due to fork-ts-checker-webpack-plugin",
