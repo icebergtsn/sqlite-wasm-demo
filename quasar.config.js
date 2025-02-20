@@ -77,6 +77,10 @@ module.exports = configure(function (ctx) {
       server: {
         type: 'http'
       },
+      headers: {
+        "Cross-Origin-Embedder-Policy": "require-corp",
+        "Cross-Origin-Opener-Policy": "same-origin",
+      },
       port: 8080,
       open: true // opens browser window automatically
     },

@@ -34,7 +34,7 @@ class SQLiteWorkerServiceV2 {
 
       console.log("Database opened with ID:", this.dbId);
 
-      await this.execute(`
+      this.promiser("exec", {dbId : this.dbId,sql : `
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -46,7 +46,7 @@ class SQLiteWorkerServiceV2 {
           amount REAL NOT NULL,
           FOREIGN KEY (user_id) REFERENCES users (id)
         );
-      `);
+      `});
 
       this.isInitialized = true;
 
@@ -81,6 +81,7 @@ class SQLiteWorkerServiceV2 {
         sql,
         bind: params,
       });
+      console.error(queryResponse);
       return queryResponse.result.rows || [];
     } catch (error) {
       console.error("SQL 查询发生错误：", error);

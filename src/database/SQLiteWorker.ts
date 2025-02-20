@@ -6,23 +6,28 @@ let initPromise : any = null;
 async function initDB() {
   const sqlite3 = await sqlite3InitModule();
 
-  const opfsVfs = sqlite3.capi.sqlite3_vfs_find("opfs");
-  if (!opfsVfs) {
-    console.log("OPFS VFS is not available in this environment.");
-  }
+  // const opfsVfs = sqlite3.capi.sqlite3_vfs_find("opfs");
+  // if (!opfsVfs) {
+  //   console.log("OPFS VFS is not available in this environment.");
+  // }
+  //
+  // const poolUtil = await sqlite3.installOpfsSAHPoolVfs({
+  //   clearOnInit: false,
+  //   directory: "/sqlite3",
+  // });
+  // console.log({poolUtil});
+  //
+  // db = new poolUtil.OpfsSAHPoolDb(`/test.db`);
 
-  const poolUtil = await sqlite3.installOpfsSAHPoolVfs({
-    clearOnInit: false,
-    directory: "/sqlite3",
-  });
-  console.log({poolUtil});
-
-  db = new poolUtil.OpfsSAHPoolDb(`/test.db`);
-
+  console.log('Running SQLite3 version', sqlite3.version.libVersion);
+  const db =
+    'opfs' in sqlite3
+      ? new sqlite3.oo1.OpfsDb('/mydb.sqlite3')
+      : new sqlite3.oo1.DB('/mydb.sqlite3', 'ct');
   console.log(
-    "opfs" in sqlite3
+    'opfs' in sqlite3
       ? `OPFS is available, created persisted database at ${db.filename}`
-      : `OPFS is not available, created transient database ${db.filename}`
+      : `OPFS is not available, created transient database ${db.filename}`,
   );
 
   db.exec(`
